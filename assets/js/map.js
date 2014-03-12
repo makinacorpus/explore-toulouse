@@ -1,346 +1,5 @@
 window.onload=function(){
 
-  /*
-   * L.Control.ZoomFS - default Leaflet.Zoom control with an added fullscreen button
-   * built to work with Leaflet version 0.5
-   * https://github.com/elidupuis/leaflet.zoomfs
-   */
-  L.Control.ZoomFS = L.Control.Zoom.extend({
-    includes: L.Mixin.Events,
-    onAdd: function (map) {
-      var zoomName = 'leaflet-control-zoom',
-          barName = 'leaflet-bar',
-          partName = barName + '-part',
-          container = L.DomUtil.create('div', zoomName + ' ' + barName);
-
-      this._map = map;
-      this._isFullscreen = false;
-
-      this._zoomFullScreenButton = this._createButton('<i class="sprite-fullscreen"></i>','Affichage plein écran',
-              'leaflet-control-fullscreen ' +
-              partName + ' ' +
-              partName + '-top',
-              container, this.fullscreen, this);
-
-      this._zoomInButton = this._createButton('<i class="sprite-zoom-in"></i>', 'Zoom avant',
-              zoomName + '-in ' +
-              partName + ' ',
-              container, this._zoomIn,  this);
-
-      this._zoomOutButton = this._createButton('<i class="sprite-zoom-out"></i>', 'Zoom arrière',
-              zoomName + '-out ' +
-              partName + ' ' +
-              partName + '-bottom',
-              container, this._zoomOut, this);
-
-      map.on('zoomend zoomlevelschange', this._updateDisabled, this);
-
-      return container;
-
-    },
-    fullscreen: function() {
-      // call appropriate internal function
-      if (!this._isFullscreen) {
-        this._enterFullScreen();
-      } else {
-        this._exitFullScreen();
-      }
-
-      // force internal resize
-      this._map.invalidateSize();
-    },
-    _enterFullScreen: function() {
-      var container = this._map._container;
-
-      // apply our fullscreen settings
-      container.style.position = 'fixed';
-      container.style.left = 0;
-      container.style.top = 0;
-      container.style.width = '100%';
-      container.style.height = '100%';
-
-      // store state
-      L.DomUtil.addClass(container, 'leaflet-fullscreen');
-      this._isFullscreen = true;
-
-      // add ESC listener
-      L.DomEvent.addListener(document, 'keyup', this._onKeyUp, this);
-
-      // fire fullscreen event on map
-      this._map.fire('enterFullscreen');
-    },
-    _exitFullScreen: function() {
-      var container = this._map._container;
-
-      // update state
-      L.DomUtil.removeClass(container, 'leaflet-fullscreen');
-      this._isFullscreen = false;
-
-      // remove fullscreen style; make sure we're still position relative for Leaflet core.
-      container.removeAttribute('style');
-
-      // re-apply position:relative; if user does not have it.
-      var position = L.DomUtil.getStyle(container, 'position');
-      if (position !== 'absolute' && position !== 'relative') {
-        container.style.position = 'relative';
-      }
-
-      // remove ESC listener
-      L.DomEvent.removeListener(document, 'keyup', this._onKeyUp);
-
-      // fire fullscreen event
-      this._map.fire('exitFullscreen');
-    },
-    _onKeyUp: function(e) {
-      if (!e) e = window.event;
-      if (e.keyCode === 27 && this._isFullscreen === true) {
-        this._exitFullScreen();
-      }
-    }
-  });
-
-  /*
-   * Extends L.Map to synchronize two maps
-   */
-
-  L.Map = L.Map.extend({
-      sync: function (map) {
-
-          this._syncMap = L.extend(map, {
-              setView: function (center, zoom, options, sync) {
-                  if (!sync) {
-                      this._syncMap.setView(center, zoom, options, true);
-                  }
-                  return L.Map.prototype.setView.call(this, center, zoom, options);
-              },
-
-              panBy: function (offset, options, sync) {
-                  if (!sync) {
-                      this._syncMap.panBy(offset, options, true);
-                  }
-                  return L.Map.prototype.panBy.call(this, offset, options);
-              },
-
-              _onResize: function (evt, sync) {
-                  if (!sync) {
-                      this._syncMap._onResize(evt, true);
-                  }
-                  return L.Map.prototype._onResize.call(this, evt);
-              }
-          });
-
-          this.on('zoomend', function() {
-              this._syncMap.setView(this.getCenter(), this.getZoom(), {reset: false}, true);
-          }, this);
-
-          this.dragging._draggable._updatePosition = function () {
-              L.Draggable.prototype._updatePosition.call(this);
-              L.DomUtil.setPosition(map.dragging._draggable._element, this._newPos);
-              map.fire('move');
-          };
-
-          return this;
-      },
-      fitBounds: function (bounds, options) {
-
-        options = options || {};
-        bounds = bounds.getBounds ? bounds.getBounds() : L.latLngBounds(bounds);
-
-        var paddingTL = L.point(options.paddingTopLeft || options.padding || [0, 0]),
-            paddingBR = L.point(options.paddingBottomRight || options.padding || [0, 0]),
-
-            zoom = this.getBoundsZoom(bounds, false, paddingTL.add(paddingBR)),
-            paddingOffset = paddingBR.subtract(paddingTL).divideBy(2),
-
-            swPoint = this.project(bounds.getSouthWest(), zoom),
-            nePoint = this.project(bounds.getNorthEast(), zoom),
-            center = this.unproject(swPoint.add(nePoint).divideBy(2).add(paddingOffset), zoom);
-
-        return this.setView(center, zoom, options);
-      }
-  });
-
-  // #################
-  // Leaflet hash
-  // #################
-
-var HAS_HASHCHANGE = (function() {
-    var doc_mode = window.documentMode;
-    return ('onhashchange' in window) &&
-      (doc_mode === undefined || doc_mode > 7);
-  })();
-
-  L.Hash = function(map, callback) {
-    this.onHashChange = L.Util.bind(this.onHashChange, this);
-
-    if (map) {
-      this.init(map, callback);
-    }
-  };
-
-  L.Hash.prototype = {
-    map: null,
-    lastHash: null,
-
-    parseHash: function(hash) {
-      if(hash.indexOf('#') === 0) {
-        hash = hash.substr(1);
-      }
-      var args = hash.split("/");
-      switch (args.length) {
-        case 1:
-          var locality = args[0].split("=");
-          if (locality[0] == "commune" || locality[0] == "canton") {
-            Ortho44._loadElasticSearchJSONP({
-              source: JSON.stringify({
-                query: {
-                      query_string: {
-                          fields: ["code_insee", "type"],
-                          query: locality[1] + " AND COMMUNE OR CANTON",
-                          default_operator: "AND"
-                      }
-                  }
-              }),
-              callback : "_l_ortho44geocoder_localitysearch"
-            });
-          };
-        case 3:
-          var zoom = parseInt(args[0], 10),
-          lat = parseFloat(args[1]),
-          lon = parseFloat(args[2]);
-          if (isNaN(zoom) || isNaN(lat) || isNaN(lon)) {
-            return false;
-          } else {
-            return {
-              center: new L.LatLng(lat, lon),
-              zoom: zoom
-            };
-          }
-        default:
-          return false;
-      }
-    },
-
-    formatHash: function(map) {
-      var center = map.getCenter(),
-          zoom = map.getZoom(),
-          precision = Math.max(0, Math.ceil(Math.log(zoom) / Math.LN2));
-
-      return "#" + [zoom,
-        center.lat.toFixed(precision),
-        center.lng.toFixed(precision)
-      ].join("/");
-    },
-
-    init: function(map, callback) {
-      this.map = map;
-      this._callback = callback;
-
-      // reset the hash
-      this.lastHash = null;
-      this.onHashChange();
-
-      if (!this.isListening) {
-        this.startListening();
-      }
-    },
-
-    remove: function() {
-      if (this.changeTimeout) {
-        clearTimeout(this.changeTimeout);
-      }
-
-      if (this.isListening) {
-        this.stopListening();
-      }
-
-      this.map = null;
-    },
-
-    onMapMove: function() {
-      // bail if we're moving the map (updating from a hash),
-      // or if the map is not yet loaded
-
-      if (this.movingMap || !this.map._loaded) {
-        return false;
-      }
-
-      var hash = this.formatHash(this.map);
-      if (this.lastHash != hash) {
-        location.replace(hash);
-        this.lastHash = hash;
-      }
-    },
-
-    movingMap: false,
-    update: function() {
-      var hash = location.hash;
-      if (hash === this.lastHash) {
-        return;
-      }
-      var parsed = this.parseHash(hash);
-      if (parsed) {
-        this.movingMap = true;
-
-        this.map.setView(parsed.center, parsed.zoom);
-        if(this._callback) this._callback();
-
-        this.movingMap = false;
-      } else {
-        this.onMapMove(this.map);
-      }
-    },
-
-    // defer hash change updates every 100ms
-    changeDefer: 100,
-    changeTimeout: null,
-    onHashChange: function() {
-      // throttle calls to update() so that they only happen every
-      // `changeDefer` ms
-      if (!this.changeTimeout) {
-        var that = this;
-        this.changeTimeout = setTimeout(function() {
-          that.update();
-          that.changeTimeout = null;
-        }, this.changeDefer);
-      }
-    },
-
-    isListening: false,
-    hashChangeInterval: null,
-    startListening: function() {
-      this.map.on("moveend", this.onMapMove, this);
-
-      if (HAS_HASHCHANGE) {
-        L.DomEvent.addListener(window, "hashchange", this.onHashChange);
-      } else {
-        clearInterval(this.hashChangeInterval);
-        this.hashChangeInterval = setInterval(this.onHashChange, 50);
-      }
-      this.isListening = true;
-    },
-
-    stopListening: function() {
-      this.map.off("moveend", this.onMapMove, this);
-
-      if (HAS_HASHCHANGE) {
-        L.DomEvent.removeListener(window, "hashchange", this.onHashChange);
-      } else {
-        clearInterval(this.hashChangeInterval);
-      }
-      this.isListening = false;
-    }
-  };
-  L.hash = function(map) {
-    return new L.Hash(map);
-  };
-  L.Map.prototype.addHash = function() {
-    this._hash = L.hash(this);
-  };
-  L.Map.prototype.removeHash = function() {
-    this._hash.remove();
-  };
-
   // ############################
   // Screenshot
   // ############################
@@ -376,134 +35,6 @@ var HAS_HASHCHANGE = (function() {
   });
   L.control.screenshot = function(map) {
     return new L.Control.Screenshot(map);
-  };
-
-  // ############################
-  // Image download
-  // ############################
-  L.Control.ImageDownload = L.Control.extend({
-    includes: L.Mixin.Events,
-    options: {
-      position: 'bottomleft',
-      title: "Exporter les images"
-    },
-
-    download: function () {
-      var p = document.querySelector("#download-link");
-      if(this.map.getZoom()>13) {
-        var bounds = this.map.getBounds();
-        var wms = "http://services.vuduciel.loire-atlantique.fr/wms/?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&BBOX="+bounds.getSouthWest().lat+","+bounds.getSouthWest().lng+","+bounds.getNorthEast().lat+","+bounds.getNorthEast().lng+"&SRS=EPSG:4326&WIDTH=1351&HEIGHT=736&LAYERS=ortho2012&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE";
-        var download_url = "http://services.vuduciel.loire-atlantique.fr/download?x0="+bounds.getSouthWest().lng+"&y0="+bounds.getSouthWest().lat+"&x1="+bounds.getNorthEast().lng+"&y1="+bounds.getNorthEast().lat
-        var message = "<p>Pour télécharger l'image complète de la position actuelle, veuillez cliquer sur l'un des liens ci-dessous.</p>"
-        message += "<p>Note: le temps de chargement peut être assez long suivant la taille de la zone affichée.</p>";
-        message += "<p><a href='"+download_url+"' id= target='_new'>Télécharger l'image en dalles ECW</a></p>";
-        //message += "<p><a href='"+wms+"' id= target='_new'>Télécharger l'image haute résolution JPG</a></p>";
-        p.innerHTML = message;
-      } else {
-        p.innerHTML = "<strong>La zone sélectionnée est trop importante, merci de la réduire.</strong>"
-      }
-      
-    },
-
-    onAdd: function(map) {
-      this.map = map;
-      this._container = L.DomUtil.create('div', 'leaflet-control-actionlink leaflet-control');
-      var link = L.DomUtil.create('a', 'leaflet-download-control', this._container);
-      link.href = '#';
-      link.title = this.options.title;
-      link.setAttribute("data-reveal-id", "download-infos");
-      link.textContent = "Exporter l'image";
-      var help = L.DomUtil.create('span', 'sprite-question has-tip tip-top noradius', this._container);
-      help.setAttribute('data-tooltip', "");
-      help.setAttribute('title', "Fonction permettant de télécharger les images en haute résolution, avec leurs coordonnées.");
-      L.DomEvent
-        .addListener(link, 'click', this.download, this);
-      return this._container;
-    }
-  });
-  L.control.imageDownload = function(map) {
-    return new L.Control.ImageDownload(map);
-  };
-
-  // ############################
-  // WMS link
-  // ############################
-  L.Control.WMSLink = L.Control.extend({
-    includes: L.Mixin.Events,
-    options: {
-      position: 'bottomleft',
-      title: "Accéder au serveur WMS"
-    },
-
-    display: function () {
-      
-    },
-
-    onAdd: function(map) {
-      this.map = map;
-      this._container = L.DomUtil.create('div', 'leaflet-control-actionlink leaflet-control');
-      var link = L.DomUtil.create('a', 'leaflet-wms-control', this._container);
-      link.href = '#';
-      link.title = this.options.title;
-      link.setAttribute("data-reveal-id", "wms-infos");
-      link.textContent = 'Accéder au serveur WMS';
-      var help = L.DomUtil.create('span', 'sprite-question has-tip tip-top noradius', this._container);
-      help.setAttribute('data-tooltip', "");
-      help.setAttribute('title', "Fonction permettant d'accéder au serveur WMS du site.");
-      L.DomEvent
-        .addListener(link, 'click', this.display, this);
-      return this._container;
-    }
-  });
-  L.control.wmsLink = function(map) {
-    return new L.Control.WMSLink(map);
-  };
-
-  // ############################
-  // Social buttons
-  // ############################
-  L.Control.Social = L.Control.extend({
-    includes: L.Mixin.Events,
-    options: {
-        position: 'bottomleft',
-        title: 'Social networks',
-        text: "VuDuCiel Loire-Atlantique",
-        links: [
-          ['facebook', "Partager sur Facebook", "https://www.facebook.com/sharer.php?u=_url_&t=_text_"],
-          ['twitter', "Partager sur Twitter", "http://twitter.com/intent/tweet?text=_text_&url=_url_"],
-          ['google-plus', "Partager sur Google Plus", "https://plus.google.com/share?url=_url_"]
-        ]
-    },
-
-    share: function () {
-      var url = this.link;
-      url = url.replace(/_text_/, encodeURIComponent(this.self.options.text));
-      url = url.replace(/_url_/, encodeURIComponent(location.href));
-      window.open(url);
-    },
-
-    onAdd: function(map) {
-        this.map = map;
-        this._container = L.DomUtil.create('div', 'leaflet-control');
-        for (var i = 0; i < this.options.links.length; i++) {
-          infos = this.options.links[i];
-          var div = L.DomUtil.create('div', 'leaflet-social-control', this._container);
-          var link = L.DomUtil.create('a', 'leaflet-bar-part leaflet-bar-part-single leaflet-social-control-'+infos[0], div);
-          link.href = infos[2];
-          link.title = infos[1];
-          var span = L.DomUtil.create('i', 'sprite-'+infos[0], link);
-
-          L.DomEvent
-              .addListener(link, 'click', L.DomEvent.stopPropagation)
-              .addListener(link, 'click', L.DomEvent.preventDefault)
-              .addListener(link, 'click', this.share, {self: this, link: infos[2]});
-        };
-        
-        return this._container;
-    }
-  });
-  L.control.social = function(map) {
-    return new L.Control.Social(map);
   };
 
   // ############################
@@ -812,13 +343,15 @@ var HAS_HASHCHANGE = (function() {
 
       // set classes
       Ortho44.removeClass(document.getElementById(compare_container), "map-hidden");
+      Ortho44.setClass(document.getElementById("map"), "map-left");
+      map.invalidateSize();
       Ortho44.setClass(document.getElementById(compare_container), "map-right");
       Ortho44.setClass(document.querySelector("body"), "compare-mode");
 
       // create map and sync it
       Ortho44.mapcompare = L.map(compare_container,
         {
-          maxBounds: map.options.maxBounds,
+          // maxBounds: map.options.maxBounds,
           zoomControl:false,
           attribution: ''
         }
@@ -832,17 +365,26 @@ var HAS_HASHCHANGE = (function() {
       map.sync(Ortho44.mapcompare);
       Ortho44.mapcompare.sync(map);
 
+      Ortho44.mapcompare.on('dragstart', function (e) {
+        map.setMaxBounds(null);
+        console.log(map.getCenter());
+      });
+      Ortho44.mapcompare.on('dragend', function (e) {
+        map.setMaxBounds(max_bounds);
+      });
+
+
       // re-center on the left
-      map.fitBounds(map.getBounds(), {paddingTopLeft: [-Math.round($(window).width()/2), 0]});
+      //map.fitBounds(map.getBounds(), {paddingTopLeft: [-Math.round($(window).width()/2), 0]});
 
       // display search result if any
-      if(Ortho44.current_result) {
-        L.geoJson(Ortho44.current_result, {
-          style: function (feature) {
-            if(feature.geometry.type=='Polygon') return {fillColor: 'transparent'};
-          }
-        }).addTo(Ortho44.mapcompare);
-      }
+      // if(Ortho44.current_result) {
+      //   L.geoJson(Ortho44.current_result, {
+      //     style: function (feature) {
+      //       if(feature.geometry.type=='Polygon') return {fillColor: 'transparent'};
+      //     }
+      //   }).addTo(Ortho44.mapcompare);
+      // }
 
       // display position markers
       Ortho44.cursorl = L.circleMarker([0,0], {radius:20, fillOpacity: 0.2, color: '#b1ca00', fillColor: '#fff'}).addTo(map);
@@ -861,6 +403,8 @@ var HAS_HASHCHANGE = (function() {
       if(Ortho44.mapcompare) {
         // reset classes
         Ortho44.setClass(Ortho44.mapcompare._container, "map-hidden");
+        Ortho44.removeClass(document.getElementById("map"), "map-left");
+        map.invalidateSize();
         Ortho44.removeClass(Ortho44.mapcompare._container, "map-right");
         Ortho44.removeClass(document.querySelector("body"), "compare-mode");
 
@@ -873,8 +417,11 @@ var HAS_HASHCHANGE = (function() {
       }
     },
     compareClean: function() {
-      map.fitBounds(map.getBounds(), {paddingTopLeft: [Math.round($(window).width()/2), 0]});
+      map.unsync(Ortho44.mapcompare);
+      Ortho44.mapcompare.unsync(map);
+      //map.fitBounds(map.getBounds(), {paddingTopLeft: [Math.round($(window).width()/2), 0]});
       var parent = Ortho44.mapcompare._container.parentNode;
+      console.log(Ortho44.mapcompare._container.parentNode);
       parent.removeChild(Ortho44.mapcompare._container);
       var newMapContainer = document.createElement('div');
       newMapContainer.setAttribute('id', "map-compare");
@@ -922,16 +469,7 @@ var HAS_HASHCHANGE = (function() {
 
     randomDisplay: function() {
       var niceLocations = [
-        ["Le Terril, Abbaretz", 18, 47.56142, -1.54120],
-        ["La Bôle de Merquel, Mesquer", 16, 47.4179, -2.4539],
-        ["La Brière, Saint-Joachim", 16, 47.3734, -2.2223],
-        ["Marais de Lyarne, Les Moutiers-en-Retz", 17, 47.04490, -1.97523],
-        ["Château de Clisson et Domaine de la Garenne Lemot, Clisson", 18, 47.08590, -1.27772],
-        ["Estuaire de la Loire", 15, 47.2907, -1.9411],
-        ["Château, Châteaubriant", 18, 47.71958, -1.37327],
-        ["La Loire, Ancenis", 16, 47.3705, -1.0800],
-        ["Le Pont de Saint-Nazaire", 14, 47.2789, -2.1653],
-        ["Lac de Vioreau, Joué-sur-Erdre", 15, 47.5232, -1.4230],
+        ["Toulouse", 16, 43.6, 1.45],
       ];
       var random = niceLocations[Math.floor(Math.random()*niceLocations.length)];
       map.setView([random[2], random[3]], random[1]);
@@ -947,16 +485,15 @@ var HAS_HASHCHANGE = (function() {
   //  MAP INIT
   // #############
 
-  var max_bounds_strict = new L.LatLngBounds(new L.LatLng(46.86008, -2.55754), new L.LatLng(47.83486, -0.92346));
-  var max_bounds_buffer = new L.LatLngBounds(new L.LatLng(46.8, -3.0), new L.LatLng(47.87, -0.8));
+
   var map = L.map('map',
       {
-        maxBounds: max_bounds_buffer,
+        maxBounds: max_bounds,
         zoomControl:false
       }
     );
 
-  map.attributionControl.setPrefix('Source: Département de Loire-Atlantique');
+  map.attributionControl.setPrefix('');
   map.on('load', function() {
     var hash = new L.Hash(map);
   });
@@ -998,63 +535,15 @@ var HAS_HASHCHANGE = (function() {
     }
   );
 
-  var ortho2012 = new L.FallbackTileLayer('http://{s}.tiles.cg44.makina-corpus.net/ortho-2012/{z}/{x}/{y}.jpg', {
+  var referenceLayer = new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     continuousWorld: true,  // very important
-    tms: true,
     maxZoom: 19,
-    subdomains: "abcdefgh",
-    attribution: "",
+    attribution: "Map data &copy; OpenStreetMap contributors",
     errorTileUrl: "/assets/images/empty.png"
   }).addTo(map);
 
-  ortho2012.on('load', function() {
-    // do not display external layers if not near limit
-    if(ortho2012.reachLimit()) {
-      map.addLayer(ign);
-      map.addLayer(streets_mapquest);
-      ortho2012._container.style.zIndex=1;
-    } else {
-      map.removeLayer(ign);
-      map.removeLayer(streets_mapquest);
-    }
-
-    // wait for progressive jpeg to render
-    window.setTimeout(function() {
-      Ortho44.setClass(document.querySelector('body'), "map-initialized");
-    }, 500);
-  });
-  ortho2012.on('loading', function() {
-    ortho2012._limit = false;
-  });
-
-  var border = L.geoJson(loire_atlantique_json, {
-    style: function (feature) {
-        return {
-          fillColor: "transparent",
-          fillOpacity: 0,
-          weight: 2,
-          opacity: 1,
-          color: 'white',
-          dashArray: '3',
-          };
-    }
-  }).addTo(map);
-  map.on('zoomend', function(e) {
-    if (map.getZoom() > 14) {
-      border.setStyle({color: 'transparent'});
-    } else {
-      border.setStyle({color: 'white'});
-    }
-  });
-
   // CONTROLS
   var osm = new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 11, attribution: "Map data &copy; OpenStreetMap contributors"});
-  var miniMap = new L.Control.MiniMap(osm, {
-    zoomLevelFixed: 7,
-    fixedPosition: true,
-    center: [-1.8237, 47.35],
-    width: 160
-  }).addTo(map);
 
   map.on('locationerror', function() {
     console.log("Too far away, keep default location");
@@ -1066,49 +555,24 @@ var HAS_HASHCHANGE = (function() {
     subdomains: 'abcdefgh'
   });
   var older_layers = {
-    'ortho1850': {url:'http://{s}.tiles.cg44.makina-corpus.net/ortho-1850/{z}/{x}/{y}.jpg', options: {
-      maxZoom: 16,
-      tms: true,
-      subdomains: 'abcdefgh'
+    'carte1680': {
+      url:'http://{s}.livembtiles.makina-corpus.net/makina/toulouse1680/{z}/{x}/{y}.png', options: {
+      //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
+      continuousWorld: true,
+      minZoom: 15,
+      maxZoom: 19,
+      //subdomains: 'abcdefgh'
     }},
-    'ortho1949': {url:'http://{s}.tiles.cg44.makina-corpus.net/ortho-1949/{z}/{x}/{y}.jpg', options: {
-      maxZoom: 18,
-      tms: true,
-      subdomains: 'abcdefgh'
+    'carte1830': {
+      url:'http://{s}.livembtiles.makina-corpus.net/makina/toulouse1830/{z}/{x}/{y}.png', options: {
+      //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
+      continuousWorld: true,
+      minZoom: 15,
+      maxZoom: 19,
+      //subdomains: 'abcdefgh'
     }},
-    'ortho1999': {url:'http://{s}.tiles.cg44.makina-corpus.net/ortho-1999/{z}/{x}/{y}.jpg', options: {
-      maxZoom: 18,
-      tms: true,
-      subdomains: 'abcdefgh'
-    }},
-    'ortho2004': {url:'http://{s}.tiles.cg44.makina-corpus.net/ortho-2004/{z}/{x}/{y}.jpg', options: {
-      maxZoom: 18,
-      tms: true,
-      subdomains: 'abcdefgh'
-    }},
-    'ortho2009': {url:'http://{s}.tiles.cg44.makina-corpus.net/ortho-2009/{z}/{x}/{y}.jpg', options: {
-      maxZoom: 18,
-      tms: true,
-      subdomains: 'abcdefgh'
-    }}
   };
 
-  L.control.locator().addTo(map);
-  (new L.Control.ZoomFS()).addTo(map);
-  var overlayMaps = {
-    "Afficher les rues": streets_custom_osm,
-    "Afficher les limites départementales": border
-  };
-  L.control.layers(null, overlayMaps,
-    {position: "topleft"}
-  ).addTo(map);
-  L.control.imageDownload().addTo(map);
-  L.control.wmsLink().addTo(map);
-  L.control.screenshot().addTo(map);
-  L.control.snippet().addTo(map);
-  L.control.social().addTo(map);
-  L.control.scale({'imperial': false, 'position': 'bottomright'}).addTo(map);
-  
   var resultsLayer = L.featureGroup().addTo(map);
 
   L.DomEvent.addListener(document.getElementById("search-input"), 'keyup', function(e) {
@@ -1179,9 +643,9 @@ var HAS_HASHCHANGE = (function() {
   };
   
   // SECONDARY MAP
-  L.DomEvent.addListener(document.querySelector("form#compare-with"), 'change', function(e) {
+  $("form#compare-with").on('change', function(e) {
     if(e.target.checked) {
-      Ortho44.compareWith(map, "map-compare", older_layers["ortho"+e.target.value]);
+      Ortho44.compareWith(map, "map-compare", older_layers["carte"+e.target.value]);
       var inputs = document.querySelectorAll("form#compare-with input");
       for(var i=0; i<inputs.length; i++) {
         if(inputs[i].id != e.target.id) inputs[i].checked = false;

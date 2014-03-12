@@ -1,4 +1,4 @@
-@green: #b1ca00;
+@green: #d6e61f;
 @grey: #eaeaea;
 
 /* SPRITE */
@@ -201,20 +201,23 @@
 }
 .map-full{
   position:absolute;
-  top: 12.7em;
-  bottom: 8em;
+  top: 8.7em;
+  bottom: 5em;
   width: 100%;
 }
 .map-hidden {
   display: none;
 }
+.map-left {
+  width: 50%;
+}
 .map-right {
   z-index: 2;
   position:absolute;
-  top: 12.7em;
-  bottom: 8em;
-  right: -50%;
-  width: 100%;
+  top: 8.7em;
+  bottom: 5em;
+  right: 0%;
+  width: 50%;
   border-left: 1px solid white;
   .leaflet-control-attribution {
     display: none;
@@ -281,25 +284,8 @@
 }
 
 .leaflet-top.leaflet-left {
-  .leaflet-bar-part, .leaflet-control-layers {
-    background-color: black;
-    border-bottom: 0;
-  }
-  .leaflet-control-zoom {
-    padding: 5px;
-    background-color: black;
-  }
   .leaflet-control-zoom.leaflet-bar, .leaflet-control-layers {
     margin-top: 0;
-  }
-  .leaflet-locate-control,
-  .leaflet-control-fullscreen,
-  .leaflet-control-zoom-in,
-  .leaflet-control-zoom-out {
-    padding: 5px;
-    width: 37px;
-    height: 36px;
-    border-bottom: 1px white dotted;
   }
   .leaflet-control-layers {
     padding: 8px;
@@ -355,7 +341,6 @@
 .leaflet-bottom.leaflet-right {
   max-width: 100%;
   width: 100%;
-  bottom: 3.6em;
   .leaflet-control {
     float: right;
     clear: none;
@@ -449,7 +434,6 @@
     position: relative;
     margin-top: 0.9em;
     padding-bottom: 0.2em;
-    border-bottom: 0.4em solid darken(@grey,10%);
     ul.inline-list {
       margin-bottom: 0.2em;
     }
