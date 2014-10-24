@@ -556,7 +556,7 @@ window.onload=function(){
   });
   var older_layers = {
     'carte1680': {
-      url:'http://{s}.livembtiles.makina-corpus.net/makina/toulouse1680/{z}/{x}/{y}.png', options: {
+      url:'http://http://tilestream.makina-corpus.net/v2/toulouse1680/{z}/{x}/{y}.png', options: {
       //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
       continuousWorld: true,
       minZoom: 15,
@@ -564,7 +564,7 @@ window.onload=function(){
       //subdomains: 'abcdefgh'
     }},
     'carte1830': {
-      url:'http://{s}.livembtiles.makina-corpus.net/makina/toulouse1830/{z}/{x}/{y}.png', options: {
+      url:'http://tilestream.makina-corpus.net/v2/toulouse1830/{z}/{x}/{y}.png', options: {
       //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
       continuousWorld: true,
       minZoom: 15,
