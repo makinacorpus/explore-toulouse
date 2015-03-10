@@ -556,7 +556,7 @@ window.onload=function(){
   });
   var older_layers = {
     'carte1680': {
-      url:'http://http://tilestream.makina-corpus.net/v2/toulouse1680/{z}/{x}/{y}.png', options: {
+      url:'http://tilestream.makina-corpus.net/v2/toulouse1680/{z}/{x}/{y}.png', options: {
       //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
       continuousWorld: true,
       minZoom: 15,
