@@ -543,7 +543,7 @@ window.onload=function(){
   }).addTo(map);
 
   // CONTROLS
-  var osm = new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 11, attribution: "Map data &copy; OpenStreetMap contributors"});
+  var osm = new L.TileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 11, attribution: "Map data &copy; OpenStreetMap contributors"});
 
   map.on('locationerror', function() {
     console.log("Too far away, keep default location");
@@ -556,7 +556,7 @@ window.onload=function(){
   });
   var older_layers = {
     'carte1680': {
-      url:'http://{s}.tilestream.makina-corpus.net/v2/toulouse1680/{z}/{x}/{y}.png', options: {
+      url:'//{s}-tilestream.makina-corpus.net/v2/toulouse1680/{z}/{x}/{y}.png', options: {
       //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
       continuousWorld: true,
       minZoom: 15,
@@ -564,7 +564,7 @@ window.onload=function(){
       //subdomains: 'abcdefgh'
     }},
     'carte1830': {
-      url:'http://{s}.tilestream.makina-corpus.net/v2/toulouse1830/{z}/{x}/{y}.png', options: {
+      url:'//{s}-tilestream.makina-corpus.net/v2/toulouse1830/{z}/{x}/{y}.png', options: {
       //url:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {
       continuousWorld: true,
       minZoom: 15,
