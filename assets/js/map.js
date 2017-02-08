@@ -500,7 +500,7 @@ window.onload=function(){
   Ortho44.randomDisplay();
 
   // LAYERS
-  var streets_mapquest = L.tileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpeg', {
+  var streets_mapquest = L.tileLayer('//otile{s}.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpeg', {
     opacity: 0.5,
     minZoom: 9,
     maxZoom: 12,
@@ -535,7 +535,7 @@ window.onload=function(){
     }
   );
 
-  var referenceLayer = new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  var referenceLayer = new L.TileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     continuousWorld: true,  // very important
     maxZoom: 19,
     attribution: "Map data &copy; OpenStreetMap contributors",
